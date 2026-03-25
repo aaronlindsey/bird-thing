@@ -1,0 +1,15 @@
+name = "bird-thing"
+main = "worker/index.js"
+compatibility_date = "2024-12-01"
+routes = [
+  { pattern = "birds.lindsey.fyi", custom_domain = true }
+]
+
+[assets]
+directory = "./frontend"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bird-detections"
+database_id = "70e2bb77-c67b-4a1d-937a-3a009ffc575d"
