@@ -22,7 +22,7 @@ Raspberry Pi 3B+                              Cloudflare
 - **Pi:** Captures audio, runs BirdNET-Go inference, stores detections locally.
 - **Polling script:** Cron job queries BirdNET-Go's local API every minute, forwards new detections to the Cloudflare Worker via authenticated POST.
 - **Cloudflare Worker:** Receives detections, stores them in D1 (SQLite), serves a GET endpoint with the last 24 hours of detections grouped by species.
-- **Frontend:** Static HTML/CSS/JS served by the same Worker. Fetches detections every 5 minutes, looks up bird photos from Wikipedia, displays a responsive card grid.
+- **Frontend:** Static HTML/CSS/JS served by the same Worker. Fetches detections every 5 minutes, looks up bird photos from Wikipedia, displays a responsive card grid. Cards show a **NEW** badge for first-time species (via BirdNET-Go's species tracking) and a **RARE** badge for regionally notable species (via the eBird API).
 
 ### Why polling instead of webhooks
 
@@ -314,8 +314,13 @@ cat ~/.local/state/bird-poller/last-id
 bash ~/poll-detections.sh
 ```
 
+## Acknowledgments
+
+Bird rarity data is provided by [eBird](https://ebird.org) ([Cornell Lab of Ornithology](https://www.birds.cornell.edu/home/)).
+
 ## Reference links
 
 - [BirdNET-Go GitHub](https://github.com/tphakala/birdnet-go)
 - [BirdNET-Go Guide (Wiki)](https://github.com/tphakala/birdnet-go/wiki/BirdNET%E2%80%90Go-Guide)
 - [BirdNET-Go Recommended Hardware](https://github.com/tphakala/birdnet-go/wiki/Recommended-Hardware)
+- [eBird API](https://documenter.getpostman.com/view/664302/S1ENwy59)
