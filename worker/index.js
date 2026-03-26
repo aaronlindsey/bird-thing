@@ -62,23 +62,67 @@ async function handleWebhook(request, env) {
   return json({ success: true }, 201);
 }
 
+const EBIRD_CACHE_TTL = 6 * 60 * 60; // 6 hours in seconds
+
+async function getNotableSpecies(env) {
+  const cacheUrl = 'https://bird-thing-cache/ebird-notable';
+  const cache = caches.default;
+
+  const cached = await cache.match(cacheUrl);
+  if (cached) {
+    return new Set(await cached.json());
+  }
+
+  if (!env.EBIRD_API_KEY || !env.EBIRD_REGION) return new Set();
+
+  try {
+    const resp = await fetch(
+      `https://api.ebird.org/v2/data/obs/${env.EBIRD_REGION}/recent/notable?back=14`,
+      { headers: { 'X-eBirdApiToken': env.EBIRD_API_KEY } },
+    );
+    if (!resp.ok) return new Set();
+
+    const data = await resp.json();
+    const names = [...new Set(data.map((obs) => obs.comName))];
+
+    await cache.put(
+      cacheUrl,
+      new Response(JSON.stringify(names), {
+        headers: { 'Cache-Control': `public, max-age=${EBIRD_CACHE_TTL}` },
+      }),
+    );
+
+    return new Set(names);
+  } catch {
+    return new Set();
+  }
+}
+
 async function handleGetDetections(env) {
-  const { results } = await env.DB.prepare(
-    `SELECT
-       common_name,
-       scientific_name,
-       MAX(detected_at) AS last_detected_at,
-       COUNT(*) AS detection_count,
-       MAX(confidence) AS max_confidence,
-       MAX(is_new_species) AS is_new_species
-     FROM detections
-     WHERE detected_at > datetime('now', '-24 hours')
-     GROUP BY common_name, scientific_name
-     ORDER BY last_detected_at DESC`
-  ).all();
+  const [{ results }, notableSpecies] = await Promise.all([
+    env.DB.prepare(
+      `SELECT
+         common_name,
+         scientific_name,
+         MAX(detected_at) AS last_detected_at,
+         COUNT(*) AS detection_count,
+         MAX(confidence) AS max_confidence,
+         MAX(is_new_species) AS is_new_species
+       FROM detections
+       WHERE detected_at > datetime('now', '-24 hours')
+       GROUP BY common_name, scientific_name
+       ORDER BY last_detected_at DESC`,
+    ).all(),
+    getNotableSpecies(env),
+  ]);
+
+  const detections = results.map((r) => ({
+    ...r,
+    is_rare: notableSpecies.has(r.common_name) ? 1 : 0,
+  }));
 
   return json({
-    detections: results,
+    detections,
     generated_at: new Date().toISOString(),
   });
 }

@@ -157,6 +157,9 @@ function createCardElement(detection) {
   if (detection.is_new_species) {
     badgesHtml += '<span class="bird-badge bird-badge-new">NEW</span>';
   }
+  if (detection.is_rare) {
+    badgesHtml += '<span class="bird-badge bird-badge-rare">RARE</span>';
+  }
 
   card.innerHTML = `
     <div class="bird-card-image-wrap">
