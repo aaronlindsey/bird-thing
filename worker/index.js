@@ -40,14 +40,15 @@ async function handleWebhook(request, env) {
   const detected_at = body.timestamp ?? body.detected_at;
   const latitude = body.metadata?.bg_latitude ?? body.latitude ?? null;
   const longitude = body.metadata?.bg_longitude ?? body.longitude ?? null;
+  const is_new_species = body.is_new_species ? 1 : 0;
 
   if (!common_name || !scientific_name || confidence == null || !detected_at) {
     return json({ error: 'Missing required fields' }, 400);
   }
 
   await env.DB.prepare(
-    `INSERT INTO detections (common_name, scientific_name, confidence, detected_at, latitude, longitude)
-     VALUES (?, ?, ?, ?, ?, ?)`
+    `INSERT INTO detections (common_name, scientific_name, confidence, detected_at, latitude, longitude, is_new_species)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     common_name,
     scientific_name,
@@ -55,6 +56,7 @@ async function handleWebhook(request, env) {
     detected_at,
     latitude,
     longitude,
+    is_new_species,
   ).run();
 
   return json({ success: true }, 201);
@@ -67,7 +69,8 @@ async function handleGetDetections(env) {
        scientific_name,
        MAX(detected_at) AS last_detected_at,
        COUNT(*) AS detection_count,
-       MAX(confidence) AS max_confidence
+       MAX(confidence) AS max_confidence,
+       MAX(is_new_species) AS is_new_species
      FROM detections
      WHERE detected_at > datetime('now', '-24 hours')
      GROUP BY common_name, scientific_name

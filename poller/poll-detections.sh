@@ -61,13 +61,15 @@ while IFS= read -r det; do
   scientific_name=$(echo "$det" | jq -r '.scientificName')
   confidence=$(echo "$det" | jq -r '.confidence')
   timestamp=$(echo "$det" | jq -r '.timestamp')
+  is_new_species=$(echo "$det" | jq '.isNewSpecies // false')
 
   payload=$(jq -n \
     --arg cn "$common_name" \
     --arg sn "$scientific_name" \
     --argjson co "$confidence" \
     --arg ts "$timestamp" \
-    '{common_name: $cn, scientific_name: $sn, confidence: $co, detected_at: $ts}')
+    --argjson ins "$is_new_species" \
+    '{common_name: $cn, scientific_name: $sn, confidence: $co, detected_at: $ts, is_new_species: $ins}')
 
   status=$(curl -sf -o /dev/null -w '%{http_code}' \
     -X POST "$WEBHOOK_URL" \

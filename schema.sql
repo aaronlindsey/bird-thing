@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS detections (
   detected_at TEXT NOT NULL,
   latitude REAL,
   longitude REAL,
+  is_new_species INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

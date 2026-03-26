@@ -153,8 +153,16 @@ function createCardElement(detection) {
     imageHtml = `<div class="bird-card-placeholder" style="background: hsl(${hue}, 35%, 45%)">${BIRD_SVG}</div>`;
   }
 
+  let badgesHtml = '';
+  if (detection.is_new_species) {
+    badgesHtml += '<span class="bird-badge bird-badge-new">NEW</span>';
+  }
+
   card.innerHTML = `
-    ${imageHtml}
+    <div class="bird-card-image-wrap">
+      ${imageHtml}
+      ${badgesHtml ? `<div class="bird-card-badges">${badgesHtml}</div>` : ''}
+    </div>
     <div class="bird-card-body">
       <div class="bird-card-name">${detection.common_name}</div>
       <div class="bird-card-scientific">${detection.scientific_name}</div>

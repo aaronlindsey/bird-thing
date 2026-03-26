@@ -1,0 +1,16 @@
+INSERT INTO detections (common_name, scientific_name, confidence, detected_at, latitude, longitude, is_new_species) VALUES
+  ('American Robin', 'Turdus migratorius', 0.94, datetime('now', '-5 minutes'), 47.6062, -122.3321, 0),
+  ('American Robin', 'Turdus migratorius', 0.88, datetime('now', '-47 minutes'), 47.6062, -122.3321, 0),
+  ('Black-capped Chickadee', 'Poecile atricapillus', 0.97, datetime('now', '-12 minutes'), 47.6062, -122.3321, 0),
+  ('Black-capped Chickadee', 'Poecile atricapillus', 0.91, datetime('now', '-2 hours'), 47.6062, -122.3321, 0),
+  ('Black-capped Chickadee', 'Poecile atricapillus', 0.85, datetime('now', '-4 hours'), 47.6062, -122.3321, 0),
+  ('Dark-eyed Junco', 'Junco hyemalis', 0.89, datetime('now', '-31 minutes'), 47.6062, -122.3321, 1),
+  ('Song Sparrow', 'Melospiza melodia', 0.76, datetime('now', '-1 hour'), 47.6062, -122.3321, 0),
+  ('Song Sparrow', 'Melospiza melodia', 0.82, datetime('now', '-3 hours'), 47.6062, -122.3321, 0),
+  ('House Finch', 'Haemorhous mexicanus', 0.91, datetime('now', '-2 hours'), 47.6062, -122.3321, 0),
+  ('Steller''s Jay', 'Cyanocitta stelleri', 0.95, datetime('now', '-3 hours'), 47.6062, -122.3321, 0),
+  ('Steller''s Jay', 'Cyanocitta stelleri', 0.78, datetime('now', '-5 hours'), 47.6062, -122.3321, 0),
+  ('Spotted Towhee', 'Pipilo maculatus', 0.83, datetime('now', '-4 hours'), 47.6062, -122.3321, 1),
+  ('Pine Siskin', 'Spinus pinus', 0.71, datetime('now', '-6 hours'), 47.6062, -122.3321, 0),
+  ('Bewick''s Wren', 'Thryomanes bewickii', 0.88, datetime('now', '-7 hours'), 47.6062, -122.3321, 1),
+  ('Downy Woodpecker', 'Dryobates pubescens', 0.92, datetime('now', '-9 hours'), 47.6062, -122.3321, 0);

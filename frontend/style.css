@@ -81,6 +81,40 @@ header h1 {
   transform: translateY(-2px);
 }
 
+.bird-card-image-wrap {
+  position: relative;
+}
+
+.bird-card-badges {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  display: flex;
+  gap: 0.35rem;
+  z-index: 1;
+}
+
+.bird-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.6rem;
+  border-radius: 5px;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.bird-badge-new {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.bird-badge-rare {
+  background: #d97706;
+  color: #ffffff;
+}
+
 .bird-card-image {
   width: 100%;
   aspect-ratio: 4 / 3;
