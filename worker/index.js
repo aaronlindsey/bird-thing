@@ -15,6 +15,10 @@ export default {
       if (request.method === 'GET') return handleGetDetections(env);
     }
 
+    if (url.pathname.startsWith('/api/species/') && request.method === 'GET') {
+      return handleGetSpeciesDetail(url, env);
+    }
+
     return json({ error: 'Not found' }, 404);
   },
 };
@@ -96,6 +100,141 @@ async function getNotableSpecies(env) {
   } catch {
     return new Set();
   }
+}
+
+const EBIRD_TAXONOMY_TTL = 7 * 24 * 60 * 60; // 7 days
+
+async function getEbirdTaxonomyMap(env) {
+  const cacheUrl = 'https://bird-thing-cache/ebird-taxonomy-map';
+  const cache = caches.default;
+
+  try {
+    const cached = await cache.match(cacheUrl);
+    if (cached) return await cached.json();
+  } catch { /* cache miss */ }
+
+  try {
+    const resp = await fetch(
+      'https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=csv&cat=species',
+      { headers: { 'X-eBirdApiToken': env.EBIRD_API_KEY } },
+    );
+    if (!resp.ok) return {};
+
+    const csv = await resp.text();
+    const map = {};
+    for (const line of csv.split('\n').slice(1)) {
+      // CSV: SCIENTIFIC_NAME,COMMON_NAME,SPECIES_CODE,...
+      const cols = line.split(',');
+      if (cols.length >= 3) {
+        map[cols[0]] = cols[2];
+      }
+    }
+
+    try {
+      await cache.put(
+        cacheUrl,
+        new Response(JSON.stringify(map), {
+          headers: { 'Cache-Control': `public, max-age=${EBIRD_TAXONOMY_TTL}` },
+        }),
+      );
+    } catch { /* cache write failed — fine, we'll refetch next time */ }
+
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+async function getEbirdSpeciesCode(scientificName, env) {
+  if (!env.EBIRD_API_KEY) return null;
+
+  try {
+    const map = await getEbirdTaxonomyMap(env);
+    return map[scientificName] || null;
+  } catch {
+    return null;
+  }
+}
+
+const XENOCANTO_CACHE_TTL = 7 * 24 * 60 * 60; // 7 days
+
+async function getXenoCantoAudio(scientificName, env) {
+  if (!env.XENOCANTO_API_KEY) return null;
+
+  const cacheUrl = `https://bird-thing-cache/xenocanto/${encodeURIComponent(scientificName)}`;
+  const cache = caches.default;
+
+  try {
+    const cached = await cache.match(cacheUrl);
+    if (cached) return await cached.json();
+  } catch { /* cache miss */ }
+
+  try {
+    // v3 API requires gen: and sp: tags for scientific name lookup
+    const [genus, species] = scientificName.split(' ');
+    const query = `gen:${genus} sp:${species} type:song`;
+    const resp = await fetch(
+      `https://xeno-canto.org/api/3/recordings?query=${encodeURIComponent(query)}&key=${env.XENOCANTO_API_KEY}`,
+    );
+    if (!resp.ok) return null;
+
+    const data = await resp.json();
+    if (!data.recordings || data.recordings.length === 0) return null;
+
+    // Sort by quality (A best, E worst) and pick the best
+    const qOrder = { A: 0, B: 1, C: 2, D: 3, E: 4 };
+    data.recordings.sort((a, b) => (qOrder[a.q] ?? 5) - (qOrder[b.q] ?? 5));
+    const rec = data.recordings[0];
+
+    const result = {
+      url: rec.file,
+      recordist: rec.rec,
+      recording_url: rec.url.startsWith('//') ? `https:${rec.url}` : rec.url,
+    };
+
+    try {
+      await cache.put(
+        cacheUrl,
+        new Response(JSON.stringify(result), {
+          headers: { 'Cache-Control': `public, max-age=${XENOCANTO_CACHE_TTL}` },
+        }),
+      );
+    } catch { /* ignore */ }
+
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+async function handleGetSpeciesDetail(url, env) {
+  const scientificName = decodeURIComponent(url.pathname.replace('/api/species/', ''));
+
+  if (!scientificName) {
+    return json({ error: 'Missing scientific name' }, 400);
+  }
+
+  const [firstDetected, monthlyCounts, speciesCode, audio] = await Promise.all([
+    env.DB.prepare(
+      `SELECT MIN(detected_at) as first_detected FROM detections WHERE scientific_name = ?`,
+    ).bind(scientificName).first(),
+    env.DB.prepare(
+      `SELECT strftime('%Y-%m', detected_at) as month, COUNT(*) as count
+       FROM detections
+       WHERE scientific_name = ?
+       GROUP BY month
+       ORDER BY month`,
+    ).bind(scientificName).all(),
+    getEbirdSpeciesCode(scientificName, env),
+    getXenoCantoAudio(scientificName, env),
+  ]);
+
+  return json({
+    first_detected: firstDetected?.first_detected || null,
+    monthly_counts: monthlyCounts?.results || [],
+    ebird_url: speciesCode ? `https://ebird.org/species/${speciesCode}` : null,
+    audio: audio || null,
+  });
 }
 
 async function handleGetDetections(env) {
