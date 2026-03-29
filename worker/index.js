@@ -161,7 +161,7 @@ const XENOCANTO_CACHE_TTL = 7 * 24 * 60 * 60; // 7 days
 async function getXenoCantoAudio(scientificName, env) {
   if (!env.XENOCANTO_API_KEY) return null;
 
-  const cacheUrl = `https://bird-thing-cache/xenocanto/${encodeURIComponent(scientificName)}`;
+  const cacheUrl = `https://bird-thing-cache/xenocanto-v2/${encodeURIComponent(scientificName)}`;
   const cache = caches.default;
 
   try {
@@ -181,9 +181,14 @@ async function getXenoCantoAudio(scientificName, env) {
     const data = await resp.json();
     if (!data.recordings || data.recordings.length === 0) return null;
 
-    // Sort by quality (A best, E worst) and pick the best
+    // Sort by: MP3 first (WAV lacks byte-range support, breaks Safari), then quality
     const qOrder = { A: 0, B: 1, C: 2, D: 3, E: 4 };
-    data.recordings.sort((a, b) => (qOrder[a.q] ?? 5) - (qOrder[b.q] ?? 5));
+    data.recordings.sort((a, b) => {
+      const aIsMp3 = (a['file-name'] || '').toLowerCase().endsWith('.mp3') ? 0 : 1;
+      const bIsMp3 = (b['file-name'] || '').toLowerCase().endsWith('.mp3') ? 0 : 1;
+      if (aIsMp3 !== bIsMp3) return aIsMp3 - bIsMp3;
+      return (qOrder[a.q] ?? 5) - (qOrder[b.q] ?? 5);
+    });
     const rec = data.recordings[0];
 
     const result = {
