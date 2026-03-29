@@ -8,6 +8,7 @@ const HISTORY_CACHE_MAX_AGE = 6 * 60 * 60 * 1000; // 6 hours
 const grid = document.getElementById('bird-grid');
 const emptyState = document.getElementById('empty-state');
 const lastUpdated = document.getElementById('last-updated');
+const subtitle = document.getElementById('subtitle');
 
 const BIRD_SVG = `<svg viewBox="0 0 64 64" width="96" height="96">
   <path d="M55 22 L45 18 C42 11 35 9 32 13 C29 17 23 18 17 21 C11 23 7 19 5 15 C3 19 3 24 6 28 C9 33 16 38 26 41 C32 43 38 42 43 37 C48 32 50 26 48 24 Z"
@@ -419,6 +420,8 @@ async function fetchAndRender() {
     const data = await resp.json();
 
     const detections = data.detections || [];
+
+    subtitle.textContent = `${detections.length} species in last 24 hours`;
 
     if (detections.length === 0) {
       grid.innerHTML = '';
