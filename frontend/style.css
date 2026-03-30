@@ -84,14 +84,15 @@ header h1 {
 .bird-card-inner {
   position: relative;
   transform-style: preserve-3d;
-  transition: transform 0.6s ease;
+  transition: transform 0.6s ease, min-height 0.6s ease;
 }
 
 .bird-card.flipped .bird-card-inner {
   transform: rotateY(180deg);
 }
 
-.bird-card.flipped .bird-card-badges {
+.bird-card.flipped .bird-card-badges,
+.bird-card.flipped .bird-card-flip-hint {
   display: none;
 }
 
@@ -113,7 +114,6 @@ header h1 {
   -webkit-backface-visibility: hidden;
   transform: rotateY(180deg);
   border-radius: var(--radius);
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -215,10 +215,61 @@ header h1 {
   margin-bottom: 0.15rem;
 }
 
-.bird-card-audio audio {
-  width: 100%;
-  height: 28px;
-  border-radius: 6px;
+.bird-card-audio-el {
+  display: none;
+}
+
+.bird-card-audio-player {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+}
+
+.bird-card-audio-btn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  padding-left: 1px; /* optical center for play triangle */
+  transition: opacity 0.15s ease;
+}
+
+.bird-card-audio-btn:hover {
+  opacity: 0.8;
+}
+
+.bird-card-audio-progress-wrap {
+  flex: 1;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+}
+
+.bird-card-audio-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.bird-card-audio-time {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 
 .bird-card-audio-credit {
@@ -274,6 +325,22 @@ header h1 {
   display: flex;
   gap: 0.35rem;
   z-index: 1;
+}
+
+.bird-card-flip-hint {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 1;
+  color: white;
+  opacity: 0.6;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  transition: opacity 0.2s ease;
+}
+
+.bird-card:not(.flipped):hover .bird-card-flip-hint {
+  opacity: 0.9;
 }
 
 .bird-badge {

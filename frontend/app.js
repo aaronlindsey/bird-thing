@@ -10,6 +10,10 @@ const emptyState = document.getElementById('empty-state');
 const lastUpdated = document.getElementById('last-updated');
 const subtitle = document.getElementById('subtitle');
 
+const PLAY_ICON = `<svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><polygon points="3,1 15,8 3,15"/></svg>`;
+const PAUSE_ICON = `<svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><rect x="2" y="1" width="5" height="14" rx="1"/><rect x="9" y="1" width="5" height="14" rx="1"/></svg>`;
+const FLIP_HINT_ICON = `<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="10" cy="10" r="8.25"/><line x1="10" y1="9" x2="10" y2="14"/><circle cx="10" cy="6.5" r="0.75" fill="currentColor" stroke="none"/></svg>`;
+
 const BIRD_SVG = `<svg viewBox="0 0 64 64" width="96" height="96">
   <path d="M55 22 L45 18 C42 11 35 9 32 13 C29 17 23 18 17 21 C11 23 7 19 5 15 C3 19 3 24 6 28 C9 33 16 38 26 41 C32 43 38 42 43 37 C48 32 50 26 48 24 Z"
     fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
@@ -237,6 +241,7 @@ function createCardElement(detection) {
         <div class="bird-card-image-wrap">
           ${imageHtml}
           ${badgesHtml ? `<div class="bird-card-badges">${badgesHtml}</div>` : ''}
+          <div class="bird-card-flip-hint">${FLIP_HINT_ICON}</div>
         </div>
         <div class="bird-card-body">
           <div class="bird-card-name">${detection.common_name}</div>
@@ -343,7 +348,14 @@ function renderCardBack({ commonName, scientificName, history, extract }) {
     html += `
       <div class="bird-card-back-section bird-card-audio">
         <div class="bird-card-audio-label">Typical song</div>
-        <audio controls preload="none" src="${audio.url}"></audio>
+        <audio class="bird-card-audio-el" preload="none" src="${audio.url}"></audio>
+        <div class="bird-card-audio-player">
+          <button class="bird-card-audio-btn" aria-label="Play">${PLAY_ICON}</button>
+          <div class="bird-card-audio-progress-wrap">
+            <div class="bird-card-audio-progress-bar"></div>
+          </div>
+          <span class="bird-card-audio-time">0:00</span>
+        </div>
         <div class="bird-card-audio-credit">Sample by ${audio.recordist} · <a href="${audio.recording_url}" target="_blank" rel="noopener">Xeno-canto</a></div>
       </div>`;
   }
@@ -360,6 +372,68 @@ function renderCardBack({ commonName, scientificName, history, extract }) {
   return html;
 }
 
+// --- Custom audio player ---
+
+function initAudioPlayer(container) {
+  const audio = container.querySelector('.bird-card-audio-el');
+  if (!audio) return;
+
+  const btn = container.querySelector('.bird-card-audio-btn');
+  const bar = container.querySelector('.bird-card-audio-progress-bar');
+  const timeEl = container.querySelector('.bird-card-audio-time');
+  const progressWrap = container.querySelector('.bird-card-audio-progress-wrap');
+
+  function formatTime(s) {
+    const m = Math.floor(s / 60);
+    return `${m}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  }
+
+  function setPlaying(playing) {
+    btn.innerHTML = playing ? PAUSE_ICON : PLAY_ICON;
+    btn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+  }
+
+  btn.addEventListener('click', () => {
+    audio.paused ? audio.play() : audio.pause();
+  });
+
+  audio.addEventListener('play', () => setPlaying(true));
+  audio.addEventListener('pause', () => setPlaying(false));
+  audio.addEventListener('ended', () => { setPlaying(false); bar.style.width = '0%'; timeEl.textContent = '0:00'; });
+
+  audio.addEventListener('timeupdate', () => {
+    if (!audio.duration) return;
+    bar.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
+    timeEl.textContent = formatTime(audio.currentTime);
+  });
+
+  progressWrap.addEventListener('click', (e) => {
+    if (!audio.duration) return;
+    const rect = progressWrap.getBoundingClientRect();
+    audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+  });
+}
+
+// --- Card height management ---
+
+function expandCardForBack(card) {
+  const inner = card.querySelector('.bird-card-inner');
+  const back = card.querySelector('.bird-card-back');
+  const frontHeight = card.querySelector('.bird-card-front').offsetHeight;
+  const backHeight = back.scrollHeight;
+  if (backHeight > frontHeight) {
+    inner.style.minHeight = backHeight + 'px';
+  }
+}
+
+function resetCardHeight(card) {
+  // Delay until after the flip animation completes so the card doesn't
+  // visually collapse while still mid-flip
+  setTimeout(() => {
+    card.querySelector('.bird-card-inner').style.minHeight = '';
+  }, 600);
+}
+
 // --- Card click handler ---
 
 grid.addEventListener('click', async (e) => {
@@ -367,13 +441,14 @@ grid.addEventListener('click', async (e) => {
   if (!card) return;
 
   // Don't flip when interacting with audio controls or links
-  if (e.target.closest('audio, a')) return;
+  if (e.target.closest('.bird-card-audio-btn, .bird-card-audio-progress-wrap, audio, a')) return;
 
   card.classList.toggle('flipped');
 
   // Pause audio when flipping back to front
   if (!card.classList.contains('flipped')) {
-    card.querySelector('audio')?.pause();
+    card.querySelector('.bird-card-audio-el')?.pause();
+    resetCardHeight(card);
     return;
   }
 
@@ -390,7 +465,10 @@ grid.addEventListener('click', async (e) => {
     ]);
 
     backEl.innerHTML = renderCardBack({ commonName, scientificName, history, extract });
+    initAudioPlayer(backEl);
   }
+
+  expandCardForBack(card);
 });
 
 function showSkeletons(count = 6) {
@@ -421,7 +499,7 @@ async function fetchAndRender() {
 
     const detections = data.detections || [];
 
-    subtitle.textContent = `${detections.length} species in last 24 hours`;
+    subtitle.textContent = `Detected ${detections.length} species in last 24 hours`;
 
     if (detections.length === 0) {
       grid.innerHTML = '';
